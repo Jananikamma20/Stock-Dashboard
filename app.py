@@ -13,7 +13,7 @@ plt.plot(data.index, data['Close'], linestyle='-', marker='')
 plt.grid()
 
 # Labels
-plt.title("Stock Price Chart - RELIANCE")
+plt.title("Stock Price Chart - TCS")
 plt.xlabel("Time")
 plt.ylabel("Price")
 
