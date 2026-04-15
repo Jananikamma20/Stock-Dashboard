@@ -3,6 +3,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 
 st.title("Stock Dashboard")
+st.markdown("### Analyze stock trends and compare performance easily")
 
 st.sidebar.header("Filters")
 
@@ -18,13 +19,20 @@ interval = st.sidebar.selectbox(
 
 mode = st.radio("Select Mode", ["Single Stock", "Compare Stocks"])
 
+stocks_list = {
+        "Reliance": "RELIANCE.NS",
+        "TCS": "TCS.NS",
+        "Infosys": "INFY.NS",
+        "HDFC Bank": "HDFCBANK.NS",
+        "ICICI Bank": "ICICIBANK.NS"
+}
+
 # SINGLE STOCK MODE
 
 if mode == "Single Stock":
-    stock_option = st.selectbox(
-        "Select a Stock",
-        ("RELIANCE.NS", "TCS.NS", "INFY.NS")
-    )
+
+    stock_name = st.selectbox("Select a Stock", list(stocks_list.keys()))
+    stock_option = stocks_list[stock_name]
 
     stock = yf.Ticker(stock_option)
     data = stock.history(period=period, interval=interval)
@@ -45,6 +53,9 @@ if mode == "Single Stock":
 
     st.pyplot(fig)
 
+    st.subheader("Recent Data")
+    st.dataframe(data.tail())
+
     # Stock Info
     st.subheader("Stock Info")
 
@@ -52,23 +63,28 @@ if mode == "Single Stock":
     st.write("Latest Price:", data['Close'].iloc[-1])
     st.write("Highest Price:", data['High'].max())
     st.write("Lowest Price:", data['Low'].min())
-    st.write("Latest Return (%):", round(latest_return, 2))
+    if latest_return > 0:
+        st.success(f"Latest Return: {round(latest_return, 2)}% 📈")
+    else:
+        st.error(f"Latest Return: {round(latest_return, 2)}% 📉")
 
 # COMPARE MODE
 
 else:
-    stocks = st.multiselect(
+    selected_names = st.multiselect(
         "Select Stocks to Compare",
-        ["RELIANCE.NS", "TCS.NS", "INFY.NS"]
+        list(stocks_list.keys())
     )
 
-    if stocks:
+    if selected_names:
         fig, ax = plt.subplots()
 
-        for stock_name in stocks:
-            stock = yf.Ticker(stock_name)
+        for name in selected_names:
+            stock = yf.Ticker(stocks_list[name])
             data = stock.history(period=period, interval=interval)
-            ax.plot(data.index, data['Close'], label=stock_name, linewidth=2)
+            if data.empty:
+                st.warning("No data available. Try different settings.")
+            ax.plot(data.index, data['Close'], label=name, linewidth=2)
 
         ax.set_title("Stock Comparison", fontsize=14)
         ax.set_xlabel("Time")
