@@ -1,6 +1,6 @@
 import streamlit as st
 import yfinance as yf
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 st.title("Stock Dashboard")
 st.markdown("### Analyze stock trends and compare performance easily")
@@ -20,11 +20,11 @@ interval = st.sidebar.selectbox(
 mode = st.radio("Select Mode", ["Single Stock", "Compare Stocks"])
 
 stocks_list = {
-        "Reliance": "RELIANCE.NS",
-        "TCS": "TCS.NS",
-        "Infosys": "INFY.NS",
-        "HDFC Bank": "HDFCBANK.NS",
-        "ICICI Bank": "ICICIBANK.NS"
+    "Reliance": "RELIANCE.NS",
+    "TCS": "TCS.NS",
+    "Infosys": "INFY.NS",
+    "HDFC Bank": "HDFCBANK.NS",
+    "ICICI Bank": "ICICIBANK.NS"
 }
 
 # SINGLE STOCK MODE
@@ -36,37 +36,53 @@ if mode == "Single Stock":
 
     stock = yf.Ticker(stock_option)
     data = stock.history(period=period, interval=interval)
-    data['MA_20'] = data['Close'].rolling(window=20).mean()
-    data['Returns'] = data['Close'].pct_change()
 
-    fig, ax = plt.subplots()
-
-    ax.plot(data.index, data['Close'], label="Close Price", linewidth=2)
-    ax.plot(data.index, data['MA_20'], label="Moving Avg (20)", linewidth=2)
-
-    ax.set_title(f"{stock_option} Price Chart", fontsize=14)
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Price")
-
-    ax.legend()
-    ax.grid(True)
-
-    st.pyplot(fig)
-
-    st.subheader("Recent Data")
-    st.dataframe(data.tail())
-
-    # Stock Info
-    st.subheader("Stock Info")
-
-    latest_return = data['Returns'].iloc[-1] * 100 
-    st.write("Latest Price:", data['Close'].iloc[-1])
-    st.write("Highest Price:", data['High'].max())
-    st.write("Lowest Price:", data['Low'].min())
-    if latest_return > 0:
-        st.success(f"Latest Return: {round(latest_return, 2)}% 📈")
+    if data.empty:
+        st.warning("No data available. Try different settings.")
     else:
-        st.error(f"Latest Return: {round(latest_return, 2)}% 📉")
+        data['MA_20'] = data['Close'].rolling(window=20).mean()
+        data['Returns'] = data['Close'].pct_change()
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(
+            x=data.index,
+            y=data['Close'],
+            mode='lines',
+            name='Close Price'
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=data.index,
+            y=data['MA_20'],
+            mode='lines',
+            name='Moving Avg (20)'
+        ))
+
+        fig.update_layout(
+            title=f"{stock_option} Price Chart",
+            xaxis_title="Time",
+            yaxis_title="Price",
+            hovermode='x unified'
+        )
+
+        st.plotly_chart(fig, width='stretch')
+
+        st.subheader("Recent Data")
+        st.dataframe(data.tail())
+
+        # Stock Info
+        st.subheader("Stock Info")
+
+        latest_return = data['Returns'].iloc[-1] * 100
+        st.write("Latest Price:", data['Close'].iloc[-1])
+        st.write("Highest Price:", data['High'].max())
+        st.write("Lowest Price:", data['Low'].min())
+
+        if latest_return > 0:
+            st.success(f"Latest Return: {round(latest_return, 2)}% 📈")
+        else:
+            st.error(f"Latest Return: {round(latest_return, 2)}% 📉")
 
 # COMPARE MODE
 
@@ -77,20 +93,29 @@ else:
     )
 
     if selected_names:
-        fig, ax = plt.subplots()
+
+        fig = go.Figure()
 
         for name in selected_names:
             stock = yf.Ticker(stocks_list[name])
             data = stock.history(period=period, interval=interval)
+
             if data.empty:
-                st.warning("No data available. Try different settings.")
-            ax.plot(data.index, data['Close'], label=name, linewidth=2)
+                st.warning(f"No data for {name}")
+                continue
 
-        ax.set_title("Stock Comparison", fontsize=14)
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Price")
+            fig.add_trace(go.Scatter(
+                x=data.index,
+                y=data['Close'],
+                mode='lines',
+                name=name
+            ))
 
-        ax.grid(True)
-        ax.legend()
+        fig.update_layout(
+            title="Stock Comparison",
+            xaxis_title="Time",
+            yaxis_title="Price",
+            hovermode='x unified'
+        )
 
-        st.pyplot(fig)
+        st.plotly_chart(fig, width='stretch')
