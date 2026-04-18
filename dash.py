@@ -38,7 +38,7 @@ if mode == "Single Stock":
     data = stock.history(period=period, interval=interval)
 
     if data.empty:
-        st.warning("No data available. Try different settings.")
+        st.warning("No data available")
     else:
         data['MA_20'] = data['Close'].rolling(window=20).mean()
         data['Returns'] = data['Close'].pct_change()
@@ -71,7 +71,6 @@ if mode == "Single Stock":
         st.subheader("Recent Data")
         st.dataframe(data.tail())
 
-        # Stock Info
         st.subheader("Stock Info")
 
         latest_return = data['Returns'].iloc[-1] * 100
@@ -119,3 +118,6 @@ else:
         )
 
         st.plotly_chart(fig, width='stretch')
+
+    else:
+        st.info("Please select at least one stock")
