@@ -1,11 +1,23 @@
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
 
-st.title("Stock Dashboard")
+st.markdown(
+    "<h1 style='text-align: center; color: #00FFAA;'>📊 Stock Dashboard</h1>",
+    unsafe_allow_html=True
+)
 st.markdown("### Analyze stock trends and compare performance easily")
+st.markdown("🟢 Live Market Data")
 
-st.sidebar.header("Filters")
+
+st.sidebar.title("📊 Dashboard Controls")
+st.sidebar.markdown("Customize your analysis")
+refresh_rate = st.sidebar.slider("Refresh Interval (seconds)", 2, 10, 5)
+
+st.caption(f"🔄 Auto-refreshing every {refresh_rate} seconds")
+
+st_autorefresh(interval=refresh_rate * 1000, key="datarefresh")
 
 period = st.sidebar.selectbox(
     "Select Period",
@@ -37,12 +49,36 @@ if mode == "Single Stock":
     stock = yf.Ticker(stock_option)
     data = stock.history(period=period, interval=interval)
 
+    if not data.empty:
+
+        latest_price = data['Close'].iloc[-1]
+        prev_price = data['Close'].iloc[-2]
+
+        change = latest_price - prev_price
+        percent = (change / prev_price) * 100
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("💰 Current Price", round(latest_price, 2), f"{round(percent,2)}%")
+        col2.metric("📈 High", round(data['High'].max(), 2))
+        col3.metric("📉 Low", round(data['Low'].min(), 2))
+
+        price_change = data['Close'].iloc[-1] - data['Close'].iloc[-2]
+        percent_change = (price_change / data['Close'].iloc[-2]) * 100
+
+        st.metric(
+            label="📊 Price Change",
+            value=f"{round(price_change,2)}",
+            delta=f"{round(percent_change,2)}%"
+        )
+
     if data.empty:
-        st.warning("No data available")
+        st.warning("No data available. Try different settings.")
     else:
         data['MA_20'] = data['Close'].rolling(window=20).mean()
         data['Returns'] = data['Close'].pct_change()
 
+        st.markdown("---")
         fig = go.Figure()
 
         fig.add_trace(go.Scatter(
@@ -58,12 +94,13 @@ if mode == "Single Stock":
             mode='lines',
             name='Moving Avg (20)'
         ))
-
         fig.update_layout(
             title=f"{stock_option} Price Chart",
             xaxis_title="Time",
             yaxis_title="Price",
-            hovermode='x unified'
+            hovermode='x unified',
+            template="plotly_dark",
+            margin=dict(l=10, r=10, t=40, b=10)
         )
 
         st.plotly_chart(fig, width='stretch')
@@ -71,6 +108,7 @@ if mode == "Single Stock":
         st.subheader("Recent Data")
         st.dataframe(data.tail())
 
+        # Stock Info
         st.subheader("Stock Info")
 
         latest_return = data['Returns'].iloc[-1] * 100
@@ -90,7 +128,7 @@ else:
         "Select Stocks to Compare",
         list(stocks_list.keys())
     )
-
+    st.subheader("📊 Compare Multiple Stocks")
     if selected_names:
 
         fig = go.Figure()
@@ -114,10 +152,7 @@ else:
             title="Stock Comparison",
             xaxis_title="Time",
             yaxis_title="Price",
-            hovermode='x unified'
+            hovermode='x unified',
+            template="plotly_dark"
         )
-
         st.plotly_chart(fig, width='stretch')
-
-    else:
-        st.info("Please select at least one stock")
