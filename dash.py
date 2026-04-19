@@ -78,32 +78,81 @@ if mode == "Single Stock":
         data['MA_20'] = data['Close'].rolling(window=20).mean()
         data['Returns'] = data['Close'].pct_change()
 
+        delta = data['Close'].diff()
+
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+
+        rs = gain / loss
+        data['RSI'] = 100 - (100 / (1 + rs))
+
         st.markdown("---")
+
         fig = go.Figure()
+        color = '#00FFAA' if data['Close'].iloc[-1] > data['Close'].iloc[0] else '#FF4B4B'
 
         fig.add_trace(go.Scatter(
             x=data.index,
             y=data['Close'],
             mode='lines',
-            name='Close Price'
+            name='Close Price',
+            line=dict(color=color, width=2.5, shape='spline'),
+            fill='tozeroy',
+            fillcolor='rgba(0,255,170,0.08)'
         ))
 
         fig.add_trace(go.Scatter(
             x=data.index,
             y=data['MA_20'],
             mode='lines',
-            name='Moving Avg (20)'
+            name='Moving Avg (20)',
+            line=dict(color='#FF6B3D', width=2)
         ))
+
         fig.update_layout(
-            title=f"{stock_option} Price Chart",
+            title=f"{stock_name} Price Trend",
             xaxis_title="Time",
             yaxis_title="Price",
-            hovermode='x unified',
             template="plotly_dark",
-            margin=dict(l=10, r=10, t=40, b=10)
+            hovermode='x unified',
+            margin=dict(l=10, r=10, t=40, b=10),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)')
         )
 
-        st.plotly_chart(fig, width='stretch')
+        fig.update_yaxes(
+            range=[
+                data['Close'].min() * 0.995,
+                data['Close'].max() * 1.005
+            ]
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        rsi_fig = go.Figure()
+
+        rsi_fig.add_trace(go.Scatter(
+            x=data.index,
+            y=data['RSI'],
+            mode='lines',
+            name='RSI',
+            line=dict(color='#FFD700', width=2)
+        ))
+
+        # RSI levels
+        rsi_fig.add_hline(y=70, line_dash="dash", line_color="red")
+        rsi_fig.add_hline(y=30, line_dash="dash", line_color="green")
+
+        rsi_fig.update_layout(
+            title="RSI Indicator",
+            template="plotly_dark",
+            height=250,
+            margin=dict(l=10, r=10, t=30, b=10),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)')
+        )
+
+        st.plotly_chart(rsi_fig, use_container_width=True)
 
         st.subheader("Recent Data")
         st.dataframe(data.tail())
